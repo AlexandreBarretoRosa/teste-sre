@@ -167,3 +167,6 @@ jobs:
             --wait
 
       - name: Deploy WhoAmI application
+        run: |
+          cd helm/whoami
+          helm install whoami . --namespace default --wait

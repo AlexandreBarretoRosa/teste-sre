@@ -1,0 +1,55 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "monitoring.labels" . | nindent 4 }}
+    app: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        {{- include "monitoring.selectorLabels" . | nindent 8 }}
+        app: grafana
+    spec:
+      containers:
+      - name: grafana
+        image: {{ .Values.grafana.image.repository }}:{{ .Values.grafana.image.tag }}
+        imagePullPolicy: {{ .Values.grafana.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.grafana.service.port }}
+        env:
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          value: {{ .Values.grafana.adminPassword }}
+        - name: GF_SECURITY_ADMIN_USER
+          value: admin
+        volumeMounts:
+        - name: grafana-storage
+          mountPath: /var/lib/grafana
+        - name: grafana-datasources
+          mountPath: /etc/grafana/provisioning/datasources
+        - name: grafana-dashboard-provisioning
+          mountPath: /etc/grafana/provisioning/dashboards
+        - name: grafana-dashboards
+          mountPath: /etc/grafana/provisioning/dashboards-json
+        resources:
+          {{- toYaml .Values.grafana.resources | nindent 10 }}
+      volumes:
+      - name: grafana-storage
+        emptyDir: {}
+      - name: grafana-datasources
+        configMap:
+          name: grafana-datasources
+      - name: grafana-dashboard-provisioning
+        configMap:
+          name: grafana-dashboard-provisioning
+      - name: grafana-dashboards
+        configMap:
+          name: grafana-dashboards
+{{- end }} 

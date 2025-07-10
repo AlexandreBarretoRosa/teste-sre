@@ -1,0 +1,48 @@
+{{- if .Values.promtail.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "monitoring.fullname" . }}-promtail-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "monitoring.labels" . | nindent 4 }}
+    app.kubernetes.io/component: promtail
+data:
+  promtail.yaml: |
+    server:
+      http_listen_port: 9080
+      grpc_listen_port: 0
+
+    positions:
+      filename: /tmp/positions.yaml
+
+    clients:
+      - url: http://{{ include "monitoring.fullname" . }}-loki:3100/loki/api/v1/push
+        batchwait: 1s
+        batchsize: 1024
+        timeout: 10s
+
+    scrape_configs:
+      - job_name: kubernetes-pods
+        static_configs:
+          - targets:
+              - localhost
+            labels:
+              job: kubernetes-pods
+              __path__: /var/log/pods/*/*/*.log
+        pipeline_stages:
+          - docker: {}
+          - labels:
+              namespace:
+              pod:
+              container:
+          - match:
+              selector: '{job="kubernetes-pods"}'
+              stages:
+                - regex:
+                    expression: '/var/log/pods/(?P<namespace>[^/]+)_(?P<pod>[^/]+)_(?P<uid>[^/]+)/(?P<container>[^/]+)/\d+\.log'
+                - labels:
+                    namespace:
+                    pod:
+                    container:
+{{- end }}

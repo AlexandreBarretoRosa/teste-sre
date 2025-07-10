@@ -1,0 +1,67 @@
+# ClusterIssuer para Let's Encrypt Production
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    # Email para notificações importantes sobre certificados
+    email: admin@duckdns.org
+    # Servidor ACME para produção
+    server: https://acme-v02.api.letsencrypt.org/directory
+    # Chave privada para a conta ACME
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    # Solucionador HTTP-01 para validação
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+---
+# ClusterIssuer para Let's Encrypt Staging (para testes)
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    email: admin@duckdns.org
+    # Servidor ACME para staging (sem limites de rate)
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-staging
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+---
+# Certificate para a aplicação WhoAmI
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: whoami-tls
+  namespace: default
+spec:
+  secretName: whoami-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - whoami.sre-desafio.local
+  - "*.sre-desafio.local"
+---
+# Certificate para monitoramento
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: monitoring-tls
+  namespace: monitoring
+spec:
+  secretName: monitoring-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - grafana.sre-desafio.local
+  - prometheus.sre-desafio.local
+  - alertmanager.sre-desafio.local

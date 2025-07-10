@@ -1,0 +1,17 @@
+{{- if .Values.alertmanager.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: alertmanager-pvc
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "monitoring.labels" . | nindent 4 }}
+    app: alertmanager
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: gp2
+  resources:
+    requests:
+      storage: {{ .Values.alertmanager.storage.size }}
+{{- end }} 

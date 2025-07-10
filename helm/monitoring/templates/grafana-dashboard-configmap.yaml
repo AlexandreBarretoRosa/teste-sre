@@ -1,0 +1,218 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provisioning
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: grafana
+    grafana_dashboard_provisioning: "1"
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /etc/grafana/provisioning/dashboards-json
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "monitoring.labels" . | nindent 4 }}
+    app: grafana
+    grafana_dashboard: "1"
+data:
+  whoami-dashboard.json: |
+    {
+      "id": null,
+      "title": "WhoAmI Application Dashboard",
+      "tags": ["whoami", "application"],
+      "timezone": "browser",
+      "refresh": "30s",
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "WhoAmI Pods Status",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "sum(kube_pod_status_phase{namespace=\"whoami\"}) by (phase)",
+              "legendFormat": "{{`{{.phase}}`}}"
+            }
+          ],
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0}
+        },
+        {
+          "id": 2,
+          "title": "WhoAmI Pods Ready",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "sum(kube_pod_status_ready{namespace=\"whoami\"}) by (condition)",
+              "legendFormat": "{{`{{.condition}}`}}"
+            }
+          ],
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0}
+        },
+        {
+          "id": 3,
+          "title": "WhoAmI Container Restarts",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "sum(kube_pod_container_status_restarts_total{namespace=\"whoami\"})",
+              "legendFormat": "Total Restarts"
+            }
+          ],
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0}
+        },
+        {
+          "id": 4,
+          "title": "WhoAmI Deployment Replicas",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "kube_deployment_status_replicas{namespace=\"whoami\"}",
+              "legendFormat": "Desired Replicas"
+            },
+            {
+              "expr": "kube_deployment_status_replicas_ready{namespace=\"whoami\"}",
+              "legendFormat": "Ready Replicas"
+            }
+          ],
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0}
+        },
+        {
+          "id": 5,
+          "title": "WhoAmI Service Endpoints",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "kube_endpoint_address_available{namespace=\"whoami\"}",
+              "legendFormat": "Available Endpoints"
+            }
+          ],
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 4}
+        },
+        {
+          "id": 6,
+          "title": "WhoAmI Pod Age (hours)",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "(time() - kube_pod_created{namespace=\"whoami\"}) / 3600",
+              "legendFormat": "Pod Age (hours)"
+            }
+          ],
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 4}
+        },
+        {
+          "id": 7,
+          "title": "WhoAmI Pod Status Timeline",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "sum(kube_pod_status_phase{namespace=\"whoami\"}) by (phase)",
+              "legendFormat": "{{`{{.phase}}`}}"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+          "yAxes": [
+            {
+              "label": "Number of Pods",
+              "min": 0
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "title": "WhoAmI Container Restarts Timeline",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "sum(kube_pod_container_status_restarts_total{namespace=\"whoami\"}) by (pod)",
+              "legendFormat": "{{`{{.pod}}`}}"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+          "yAxes": [
+            {
+              "label": "Restart Count",
+              "min": 0
+            }
+          ]
+        },
+        {
+          "id": 9,
+          "title": "WhoAmI Log Entries Rate",
+          "type": "timeseries",
+          "datasource": "Loki",
+          "targets": [
+            {
+              "expr": "rate({namespace=\"whoami\"}[5m])",
+              "legendFormat": "{{`{{.pod}}`}} - {{`{{.container}}`}}"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+          "yAxes": [
+            {
+              "label": "Log entries per second",
+              "min": 0
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "title": "WhoAmI Log Entries by Level",
+          "type": "timeseries",
+          "datasource": "Loki",
+          "targets": [
+            {
+              "expr": "rate({namespace=\"whoami\"} |= \"level=info\"[5m])",
+              "legendFormat": "INFO - {{`{{.pod}}`}}"
+            },
+            {
+              "expr": "rate({namespace=\"whoami\"} |= \"level=error\"[5m])",
+              "legendFormat": "ERROR - {{`{{.pod}}`}}"
+            },
+            {
+              "expr": "rate({namespace=\"whoami\"} |= \"level=warn\"[5m])",
+              "legendFormat": "WARN - {{`{{.pod}}`}}"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+          "yAxes": [
+            {
+              "label": "Log entries per second",
+              "min": 0
+            }
+          ]
+        },
+        {
+          "id": 11,
+          "title": "WhoAmI Recent Logs",
+          "type": "logs",
+          "datasource": "Loki",
+          "targets": [
+            {
+              "expr": "{namespace=\"whoami\"}",
+              "maxLines": 100
+            }
+          ],
+          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24}
+        }
+      ],
+      "schemaVersion": 16,
+      "version": 1
+    }

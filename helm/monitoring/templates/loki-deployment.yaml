@@ -1,0 +1,73 @@
+{{- if .Values.loki.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "monitoring.fullname" . }}-loki
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "monitoring.labels" . | nindent 4 }}
+    app.kubernetes.io/component: loki
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "monitoring.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: loki
+  template:
+    metadata:
+      labels:
+        {{- include "monitoring.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: loki
+    spec:
+      initContainers:
+      - name: init-loki-dirs
+        image: busybox:1.35
+        command: ["sh", "-c", "mkdir -p /var/loki/chunks /var/loki/rules /var/loki/boltdb-shipper-active /var/loki/boltdb-shipper-cache /var/loki/compactor && chmod -R 777 /var/loki"]
+        volumeMounts:
+        - name: loki-storage
+          mountPath: /var/loki
+      containers:
+      - name: loki
+        image: grafana/loki:2.7.0
+        args:
+        - -config.file=/etc/loki/loki.yaml
+        ports:
+        - containerPort: 3100
+          name: http
+        - containerPort: 9096
+          name: grpc
+        volumeMounts:
+        - name: loki-config
+          mountPath: /etc/loki
+        - name: loki-storage
+          mountPath: /var/loki
+        - name: wal-storage
+          mountPath: /wal
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /ready
+            port: 3100
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 3100
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: loki-config
+        configMap:
+          name: {{ include "monitoring.fullname" . }}-loki-config
+      - name: loki-storage
+        emptyDir: {}
+      - name: wal-storage
+        emptyDir: {}
+{{- end }}

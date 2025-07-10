@@ -2,9 +2,9 @@ name: Deploy SRE Desafio
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master, teste ]
   pull_request:
-    branches: [ main ]
+    branches: [ master, teste ]
 
 env:
   AWS_REGION: us-east-1

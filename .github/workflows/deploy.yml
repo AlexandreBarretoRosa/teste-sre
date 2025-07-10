@@ -11,7 +11,6 @@ env:
   CLUSTER_NAME: sre-desafio-cluster
 
 jobs:
-  # Job de validação e testes
   validate:
     runs-on: ubuntu-latest
     steps:
@@ -40,10 +39,22 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Cache Terraform plugins
+        uses: actions/cache@v3
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: terraform-${{ runner.os }}-${{ hashFiles('**/*.tf') }}
+          restore-keys: terraform-
+
       - name: Terraform Init
         run: |
           cd terraform
-          terraform init
+          terraform init -input=false
+
+      - name: Terraform FMT Check
+        run: |
+          cd terraform
+          terraform fmt -check
 
       - name: Terraform Validate
         run: |
@@ -54,14 +65,20 @@ jobs:
         run: |
           cd terraform
           terraform plan -out=tfplan
-        continue-on-error: true
 
       - name: Helm Lint
         run: |
           cd helm/whoami
           helm lint .
 
-  # Job de deploy da infraestrutura
+      - name: Helm Template & Kubeval
+        run: |
+          sudo curl -sL https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz | tar xz
+          sudo mv kubeval /usr/local/bin/
+          cd helm/whoami
+          helm template whoami . > rendered.yaml
+          kubeval rendered.yaml
+
   deploy-infrastructure:
     needs: validate
     runs-on: ubuntu-latest
@@ -85,7 +102,7 @@ jobs:
       - name: Terraform Init
         run: |
           cd terraform
-          terraform init
+          terraform init -input=false
 
       - name: Terraform Apply
         run: |
@@ -101,7 +118,6 @@ jobs:
           kubectl get nodes
           kubectl get pods --all-namespaces
 
-  # Job de deploy das aplicações
   deploy-applications:
     needs: deploy-infrastructure
     runs-on: ubuntu-latest
@@ -151,30 +167,3 @@ jobs:
             --wait
 
       - name: Deploy WhoAmI application
-        run: |
-          cd helm/whoami
-          helm install whoami . \
-            --namespace default \
-            --wait
-
-      - name: Verify deployment
-        run: |
-          kubectl get pods --all-namespaces
-          kubectl get services --all-namespaces
-          kubectl get ingress --all-namespaces
-
-  # Job de notificação
-  notify:
-    needs: [deploy-applications]
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - name: Notify deployment status
-        run: |
-          if [ "${{ needs.deploy-applications.result }}" == "success" ]; then
-            echo "✅ Deploy realizado com sucesso!"
-            echo "🌐 Aplicação: https://whoami.sre-desafio.local"
-          else
-            echo "❌ Deploy falhou!"
-            exit 1
-          fi

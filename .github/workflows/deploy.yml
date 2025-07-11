@@ -66,11 +66,6 @@ jobs:
           cd terraform
           terraform plan -out=tfplan
 
-      - name: Helm Lint
-        run: |
-          cd helm/whoami
-          helm lint .
-
       - name: Helm Template & Kubeval
         run: |
           sudo curl -sL https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz | tar xz

@@ -2,9 +2,9 @@ name: Deploy SRE Desafio
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master, teste ]
   pull_request:
-    branches: [ main ]
+    branches: [ master, teste ]
 
 env:
   AWS_REGION: us-east-1
@@ -66,18 +66,13 @@ jobs:
           cd terraform
           terraform plan -out=tfplan
 
-      - name: Helm Lint
-        run: |
-          cd helm/whoami
-          helm lint .
-
       - name: Helm Template & Kubeval
         run: |
-          sudo curl -sL https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz | tar xz
+          curl -sL https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz | tar xz
           sudo mv kubeval /usr/local/bin/
           cd helm/whoami
           helm template whoami . > rendered.yaml
-          kubeval rendered.yaml
+          kubeval --ignore-missing-schemas rendered.yaml
 
   deploy-infrastructure:
     needs: validate

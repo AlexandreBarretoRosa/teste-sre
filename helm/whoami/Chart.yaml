@@ -1,0 +1,16 @@
+apiVersion: v2
+name: whoami
+description: A Helm chart for the WhoAmI application - SRE Desafio
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+- whoami
+- sre
+- desafio
+home: https://github.com/sre-desafio/whoami
+sources:
+- https://hub.docker.com/r/jwilder/whoami
+maintainers:
+- name: SRE Team
+  email: sre@example.com

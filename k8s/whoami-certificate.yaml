@@ -1,0 +1,13 @@
+# Certificate para a aplicação WhoAmI no namespace whoami-app
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: sre-test-tls
+  namespace: whoami-app
+spec:
+  secretName: sre-test-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - sre-test.duckdns.org 
